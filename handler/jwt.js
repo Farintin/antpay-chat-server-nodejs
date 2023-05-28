@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken')
 
+const User = require('../model/user.model')
+
+
+
 
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET
@@ -12,7 +16,7 @@ const generateAccessToken = userId => {
     }, 
     ACCESS_TOKEN_SECRET,
     {
-        expiresIn: '1h'
+        expiresIn: '7d'
     })
 
     return token
@@ -31,19 +35,39 @@ const generateAccessToken = userId => {
     return token
 } */
 
-/* const verifyToken = token => {
-    jwt.verify(token, ACCESS_TOKEN_SECRET, (err, doc) => {
+const verifyToken = async token => {
+    return await jwt.verify(token, ACCESS_TOKEN_SECRET, (err, doc) => {
         if (err) {
             return null
         }
         return doc
     })
-} */
+}
+
+const jwtAuthHandler = async (req, res, next) => {
+    const token = req.headers['authorization'].split('Bearer ')[1]
+    // console.log('token:', token);
+    if (!token) {
+        // Authentication token must be "Bearer [token]"
+        return res.status(403).json('Unauthorized')
+    }
+
+    const jwtResult = await verifyToken(token)
+    if (!jwtResult) {
+        // Invalid/Expired token
+        // console.log('Invalid/Expired token', jwtResult);
+        return res.status(401).json('Unauthorized')
+    }
+
+    // console.log('jwtResult:', jwtResult);
+    req.userId = jwtResult.sub
+    return next()
+}
 
 
 
 module.exports = {
     generateAccessToken,
-    // generateRefreshToken,
-    // verifyToken
+    verifyToken,
+    jwtAuthHandler
 }

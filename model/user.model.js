@@ -24,7 +24,7 @@ const userSchema = new Schema({
     },
     avatar: {
         type: Schema.Types.ObjectId,
-        ref: 'media'
+        ref: 'Media'
     },
     name: {
         type: String,
