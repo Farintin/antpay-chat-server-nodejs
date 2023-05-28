@@ -22,6 +22,10 @@ const userSchema = new Schema({
             unique: true
         }
     },
+    /* phoneVerified: {
+        type: Boolean,
+        default: false
+    }, */
     avatar: {
         type: Schema.Types.ObjectId,
         ref: 'Media'
@@ -45,7 +49,24 @@ const userSchema = new Schema({
     active: {
         type: Boolean,
         default: false
-    }
+    },
+    contacts: [{
+        countryName: {
+            type: String,
+            trim: true,
+            required: true
+        },
+        countryCode: {
+            type: String,
+            trim: true,
+            required: true
+        },
+        number: {
+            type: String,
+            trim: true,
+            required: true
+        }
+    }]
 }, {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
 })
