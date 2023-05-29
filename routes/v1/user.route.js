@@ -8,6 +8,8 @@ const router = express.Router()
 
 router.get('/user', jwtAuthHandler, Controller.getUserData)
 
+router.put('/user/update', jwtAuthHandler, Controller.updateUser)
+
 
 
 module.exports = router
