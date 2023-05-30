@@ -99,5 +99,34 @@ module.exports = {
             resPayload.msg = 'success'
             res.json(resPayload)
         })
+    },
+
+    deleteContacts: async (req, res) => {
+        const removeContacts = req.body
+        const resPayload = {}
+        const userId = req.userId
+
+        // Fetch user _id
+        const user = await User.findById(userId).select('_id')
+        let phonebook = await Phonebook.findOne({ user: user._id })
+        /* if (!phonebook) {
+            resPayload.msg = 'success'
+            return res.json(resPayload)
+        } */
+        const removeContactsPhoneNumber = removeContacts.map(c => c.phone.number)
+        phonebook.contacts = phonebook.contacts.filter(c => {
+            return !removeContactsPhoneNumber.includes(c.phone.number)
+        })
+        
+        phonebook.save(async (err) => {
+            if (err) {
+                resPayload.msg = 'error'
+                resPayload.from = 'Mongodb'
+                resPayload.data = err
+                return res.json(resPayload)
+            }
+            resPayload.msg = 'success'
+            res.json(resPayload)
+        })
     }
 }
