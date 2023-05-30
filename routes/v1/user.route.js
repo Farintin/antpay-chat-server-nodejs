@@ -9,6 +9,7 @@ const router = express.Router()
 router.get('/user', jwtAuthHandler, Controller.getUserData)
 
 router.put('/user/update', jwtAuthHandler, Controller.updateUser)
+router.put('/user/addContacts', jwtAuthHandler, Controller.addContacts)
 
 
 

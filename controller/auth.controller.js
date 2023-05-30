@@ -55,7 +55,7 @@ module.exports = {
             const thumb_url = await cld.scaleImage(cldRes.public_id)
             console.log('thumb_url:', thumb_url)
 
-            const newMedia = Media({
+            const newMedia = new Media({
                 url: cldRes.secure_url,
                 thumb_url,
                 storageId: cldRes.public_id,
