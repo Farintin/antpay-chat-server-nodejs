@@ -4,35 +4,6 @@ const Phonebook = require('../model/phonebook.model')
 
 
 module.exports = {
-    getUserData: async (req, res) => {
-        const resPayload = {}
-        User.findById(req.userId, async (err, doc) => {
-            if (err) {
-                resPayload.msg = 'error'
-                resPayload.from = 'Mongodb'
-                resPayload.data = err
-                return res.json(resPayload)
-            }
-            
-            resPayload.msg = 'ok'
-            resPayload.data = await doc.populate('avatar contacts.user contacts.user.avatar')
-            res.json(resPayload)
-        })
-    },
-    
-    updateUser: async (req, res) => {
-        const resPayload = {}
-
-        const doc = await User.findByIdAndUpdate(req.userId, { $set: req.body })
-        if (!doc) {
-            resPayload.msg = 'error'
-            resPayload.from = 'Mongodb'
-            return res.json(resPayload)
-        }
-        resPayload.msg = 'success'
-        res.json(resPayload)
-    },
-    
     addContacts: async (req, res) => {
         const contacts = req.body
         const resPayload = {}
@@ -52,17 +23,11 @@ module.exports = {
 
         // Filter out already had contacts
         let newContacts = contacts
-        // console.log('newContacts1:', newContacts);
         phonebook.contacts.forEach((pbc) => {
             newContacts = newContacts.filter((c) => {
-                // console.log('###');
-                // console.log('pbc.phone.number:', pbc.phone.number);
-                // console.log('c.phone.number:', c.phone.number);
-                // console.log('###');
                 return c.phone.number !== pbc.phone.number
             })
         })
-        // console.log('newContacts3:', newContacts);
 
         if (newContacts.length === 0) {
             resPayload.msg = 'success'
@@ -73,7 +38,6 @@ module.exports = {
         const newContactsPhone = newContacts.map((c) => {
             return {phone: c.phone}
         })
-        // console.log('newContactsPhone:', newContactsPhone);
         // Find existing users with phones in new contacts
         const existingUsers = await User.find({ $or: newContactsPhone }).select('phone _id')
         // Mapout phone number from existing users of new contacts 
@@ -109,10 +73,7 @@ module.exports = {
         // Fetch user _id
         const user = await User.findById(userId).select('_id')
         let phonebook = await Phonebook.findOne({ user: user._id })
-        /* if (!phonebook) {
-            resPayload.msg = 'success'
-            return res.json(resPayload)
-        } */
+
         const removeContactsPhoneNumber = removeContacts.map(c => c.phone.number)
         phonebook.contacts = phonebook.contacts.filter(c => {
             return !removeContactsPhoneNumber.includes(c.phone.number)
@@ -128,5 +89,63 @@ module.exports = {
             resPayload.msg = 'success'
             res.json(resPayload)
         })
+    },
+
+    getUserData: async (req, res) => {
+        const resPayload = {}
+        User.findById(req.userId, async (err, doc) => {
+            if (err) {
+                resPayload.msg = 'error'
+                resPayload.from = 'Mongodb'
+                resPayload.data = err
+                return res.json(resPayload)
+            }
+            
+            resPayload.msg = 'ok'
+            resPayload.data = await doc.populate('avatar')
+            res.json(resPayload)
+        })
+    },
+
+    getPhonebook: async (req, res) => {
+        const resPayload = {}
+        Phonebook.findOne({ user: req.userId }, async (err, doc) => {
+            if (err) {
+                resPayload.msg = 'error'
+                resPayload.from = 'Mongodb'
+                resPayload.data = err
+                return res.json(resPayload)
+            }
+            
+            resPayload.msg = 'ok'
+            resPayload.data = doc
+            res.json(resPayload)
+        })
+    },
+
+    updateUser: async (req, res) => {
+        const resPayload = {}
+
+        const doc = await User.findByIdAndUpdate(req.userId, { $set: req.body })
+        if (!doc) {
+            resPayload.msg = 'error'
+            resPayload.from = 'Mongodb'
+            return res.json(resPayload)
+        }
+        resPayload.msg = 'success'
+        res.json(resPayload)
+    },
+    
+    userFetchUsers: async (req, res) => {
+        const resPayload = {}
+        const usersId = req.query.ids
+                            .split(',')
+                            .map(id => ({_id: id}))
+        // console.log('usersId:', usersId);
+        const users = await User.find({ $or: usersId }).populate('avatar')
+        // console.log('users:', users);
+        resPayload.msg = 'ok'
+        resPayload.data = users
+        res.json(resPayload)
     }
 }
