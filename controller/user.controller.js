@@ -141,9 +141,9 @@ module.exports = {
         const usersId = req.query.ids
                             .split(',')
                             .map(id => ({_id: id}))
-        // console.log('usersId:', usersId);
+                            
         const users = await User.find({ $or: usersId }).populate('avatar')
-        // console.log('users:', users);
+
         resPayload.msg = 'ok'
         resPayload.data = users
         res.json(resPayload)
