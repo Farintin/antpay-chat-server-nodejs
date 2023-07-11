@@ -36,7 +36,11 @@ const phonebookSchema = new Schema({
                     required: true
                 }
             },
-            userId: String
+            user: {
+                type: Schema.Types.ObjectId,
+                ref: 'User'
+            },
+            roomId: String
         }
     ]
 }, {

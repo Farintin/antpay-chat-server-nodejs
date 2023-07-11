@@ -4,7 +4,7 @@ const cors = require("cors");
 const config = require('./config')
 require('./db')
 const routes = require("./routes/v1")
-const io = require('./io')
+const io = require('./ioServer')
 
 
 const app = express()

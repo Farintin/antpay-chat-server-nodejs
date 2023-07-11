@@ -49,32 +49,6 @@ const userSchema = new Schema({
         type: Boolean,
         default: false
     },
-    /* contacts: [
-        {
-            phone: {
-                countryName: {
-                    type: String,
-                    trim: true,
-                    required: true
-                },
-                countryCode: {
-                    type: String,
-                    trim: true,
-                    required: true
-                },
-                number: {
-                    type: String,
-                    trim: true,
-                    required: true
-                }
-            },
-            user: {
-                type: Schema.Types.ObjectId,
-                ref: 'User',
-                default: null
-            }
-        }
-    ], */
     // refreshTokens: [String],
 }, {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }
