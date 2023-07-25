@@ -45,10 +45,18 @@ const userSchema = new Schema({
         trim: true,
         default: ''
     },
-    active: {
-        type: Boolean,
-        default: false
-    },
+    devices: [
+        {
+            mac: String,
+            web: Boolean,
+            webAgent: String,
+            loggedOut: {
+                type: Boolean,
+                default: true
+            },
+            // accessToken: String
+        }
+    ],
     // refreshTokens: [String],
 }, {
     timestamps: { createdAt: 'createdAt', updatedAt: 'updatedAt' }

@@ -7,6 +7,7 @@ const Controller = require('../../controller/chatroom.controller')
 const router = express.Router()
 
 router.get('/', jwtAuthHandler, Controller.getRooms)
+router.get('/user', jwtAuthHandler, Controller.getUserRooms)
 
 
 

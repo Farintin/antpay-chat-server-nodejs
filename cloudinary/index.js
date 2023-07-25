@@ -11,13 +11,15 @@ cloudinary.config({
 
 
 module.exports = {
-  upload: async (mediaPath, mediaId) => {
+  upload: async (media, mediaId) => {
     let opt = {
       resource_type: 'auto',
       folder: 'antpay'
     }
-    mediaId ? opt.public_id = mediaId : ''
-    return cloudinary.uploader.upload(mediaPath, opt)
+
+    if (mediaId) opt.public_id = mediaId
+
+    const res = await cloudinary.uploader.upload(media, opt)
       .then((data) => {
         // console.log('cld uploader res', data)
         return data
@@ -25,6 +27,8 @@ module.exports = {
         // console.log('cld uplaoder err:', err)
         return err
       })
+    
+    return res
   },
 
   scaleImage: async imageId => {

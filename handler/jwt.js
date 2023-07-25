@@ -46,7 +46,6 @@ const verifyToken = async token => {
 
 const jwtAuthHandler = async (req, res, next) => {
     const token = req.headers['authorization'].split('Bearer ')[1]
-    // console.log('token:', token);
     if (!token) {
         // Authentication token must be "Bearer [token]"
         return res.status(403).json('Unauthorized')
@@ -55,19 +54,38 @@ const jwtAuthHandler = async (req, res, next) => {
     const jwtResult = await verifyToken(token)
     if (!jwtResult) {
         // Invalid/Expired token
-        // console.log('Invalid/Expired token', jwtResult);
         return res.status(401).json('Unauthorized')
     }
 
-    // console.log('jwtResult:', jwtResult);
     req.userId = jwtResult.sub
     return next()
 }
+
+const refreshToken = async (req, res) => {
+    const token = req.headers['authorization'].split('Bearer ')[1]
+    if (!token) {
+        // Authentication token must be "Bearer [token]"
+        return res.status(403).json('Unauthorized')
+    }
+
+    const jwtResult = await verifyToken(token)
+    if (!jwtResult) {
+        // Invalid/Expired token
+        return res.status(401).json('Unauthorized')
+    }
+
+    const newToken = generateAccessToken(jwtResult.sub)
+    const msg = 'ok'
+    return res.json({ data: { newToken }, msg })
+}
+
+
 
 
 
 module.exports = {
     generateAccessToken,
     verifyToken,
-    jwtAuthHandler
+    jwtAuthHandler,
+    refreshToken
 }

@@ -44,12 +44,12 @@ module.exports = {
     },
 
     signup: async (req, res, next) => {
-        let reqBody = req.body
-        let resPayload = {data: {}}
-
-        const { avatar } = reqBody
-
         try {
+            let reqBody = req.body
+            let resPayload = {data: {}}
+    
+            const { avatar } = reqBody
+
             const cldRes = await cld.upload(avatar)
             console.log('cldRes:', cldRes)
             const thumb_url = await cld.scaleImage(cldRes.public_id)

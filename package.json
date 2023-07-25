@@ -2,10 +2,10 @@
   "name": "antpay-chat-server-nodejs",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "app.js",
   "scripts": {
-    "start": "node server.js --trace-warnings",
-    "dev": "nodemon server.js --trace-warnings"
+    "start": "node app.js --trace-warnings",
+    "dev": "nodemon app.js --trace-warnings"
   },
   "keywords": [],
   "author": "",
