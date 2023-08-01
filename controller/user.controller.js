@@ -7,111 +7,108 @@ const cld = require('../cloudinary')
 
 
 
+
+function compareArrays(arr1, arr2){
+    if(arr1.length !== arr2.length) return false
+
+    if(arr1.sort().toString() !== arr2.sort().toString()) return false
+  
+    return true
+}
+
+
+
 module.exports = {
     addContacts: async (req, res) => {
-        const contacts = req.body
+        let contactsPhones = req.body
         const resPayload = {}
         const userId = req.userId
 
         // Get user
         const user = await User.findById(userId).select('_id phone')
 
-        const contactsPhoneNumber = contacts.map(c => (c.phone.number))
-        // Create chatrooms
-        let insertRoomsInput = contactsPhoneNumber.map(phoneNumber => {
+        // Find existing pair chatrooms, Create chatrooms
+        const contactsPhoneNumber = contactsPhones.map(c => c.phone.number)
+        let roomsQ = contactsPhoneNumber.map(phoneNumber => {
             const chatroom = {
                 roomType: 'pair',
                 usersPhoneNumber: [user.phone.number, phoneNumber]
             }
             return chatroom
         })
-        // Find existing pair chatrooms
-        let findRoomsInput = insertRoomsInput.map(doc => {
-            const docCopy = structuredClone(doc)
-            docCopy.usersPhoneNumber = { $all: doc.usersPhoneNumber }
-            return docCopy
+
+        // Find existing rooms
+        const existingRooms = await ChatRoom.find({ $or: roomsQ })
+        roomsQ = roomsQ.filter(q => {
+            let bool = true
+            const room = existingRooms
+                            .find(r => compareArrays(r.usersPhoneNumber, q.usersPhoneNumber))
+            if (room) bool = false
+            console.log({ room, bool })
+
+            return bool
         })
-        let rooms = await ChatRoom.find({ $or: findRoomsInput })
-        if (rooms.length > 0) {
-            let roomI, op
-            insertRoomsInput = insertRoomsInput.filter(doc => {
-                roomI = rooms.findIndex(room => {
-                    return room.usersPhoneNumber.includes(doc.usersPhoneNumber[0]) && room.usersPhoneNumber.includes(doc.usersPhoneNumber[1])
+        
+        await ChatRoom.insertMany(roomsQ, async (err, docs) => {
+            if (err) {
+                resPayload.msg = 'error'
+                resPayload.from = 'Mongodb'
+                resPayload.data = err
+                return res.json(resPayload)
+            }
+
+            let rooms = docs
+            if (rooms.length === 0) rooms = existingRooms
+            console.log({ docs, rooms });
+
+            console.log({ contactsPhones });
+            const existingUsers = await User.find({ $or: contactsPhones })
+                                    .select('phone _id')
+
+            // Tag contacts with existing users
+            console.log({ existingUsers });
+            existingUsers.forEach((u) => {
+                const i = contactsPhones
+                            .findIndex((c) => c.phone.number === u.phone.number)
+                if (i !== -1) {
+                    contactsPhones[i].userAccExist = true
+                    contactsPhones[i].user = u._id
+                }
+                console.log({ i });
+            })
+
+            // Add room id to new contacts
+            const contacts = contactsPhones.map(c => {
+                let room = rooms.find(room => {
+                    console.log({ room });
+                    return room.usersPhoneNumber.includes(c.phone.number)
                 })
-                roomI === -1 ? op = true : op = false
-                return op
+                if (room !== undefined) {
+                    c.roomId = room.id
+                }
+                return c
             })
-        }
 
-        let newRooms
-        ChatRoom.insertMany(insertRoomsInput, (err, docs) => {
-            if (err) {
-                resPayload.msg = 'error'
-                resPayload.from = 'Mongodb'
-                resPayload.data = err
-                return res.json(resPayload)
-            }
-            newRooms = docs
-        })
-        // Fetch user phonebook
-        let phonebook = await Phonebook.findOne({ user: user._id })
-        // Filter out already saved contacts
-        let newContacts = contacts
-        phonebook.contacts.forEach((phonebookContact) => {
-            newContacts = newContacts.filter((c) => {
-                return c.phone.number !== phonebookContact.phone.number
+            // Fetch, add contacts and save phonebook
+            const phonebook = await Phonebook.findOne({ user: user._id })
+
+            phonebook.contacts.push(...contacts)
+            phonebook.save(async (err, doc) => {
+                if (err) {
+                    resPayload.msg = 'error'
+                    resPayload.from = 'Mongodb'
+                    resPayload.data = err
+                    return res.json(resPayload)
+                }
+    
+                resPayload.msg = 'success'
+                resPayload.data = doc
+                res.json(resPayload)
             })
-        })
-
-        if (newContacts.length === 0) {
-            resPayload.msg = 'success'
-            return res.json(resPayload)
-        }
-        // Mapout phone from new contacts
-        const newContactsPhone = newContacts.map(c => ({phone: c.phone}))
-        // Find existing users with phones in new contacts
-        const existingUsers = await User.find({ $or: newContactsPhone }).select('phone _id')
-        // Mapout phone number from existing users of new contacts 
-        const existingUsersPhoneNumber = existingUsers.map((user) => user.phone.number)
-
-        // Tag contacts with existing users
-        existingUsers.forEach((user) => {
-            const contactIndex = newContacts.findIndex((c) => c.phone.number === user.phone.number)
-            if (existingUsersPhoneNumber.includes(user.phone.number)) {
-                newContacts[contactIndex].userAccExist = true
-                newContacts[contactIndex].user = user._id
-            }
-        })
-
-        // Add room id to new contacts
-        let room
-        newContacts = newContacts.map(c => {
-            room = newRooms.find(room => {
-                return room.usersPhoneNumber.includes(c.phone.number)
-            })
-            if (room !== undefined) {
-                c.roomId = room.id
-            }
-            return c
-        })
-
-        // Save phonebook
-        phonebook.contacts.push(...newContacts)
-        phonebook.save(async (err, doc) => {
-            if (err) {
-                resPayload.msg = 'error'
-                resPayload.from = 'Mongodb'
-                resPayload.data = err
-                return res.json(resPayload)
-            }
-
-            resPayload.msg = 'success'
-            // resPayload.data = doc
-            res.json(resPayload)
         })
     },
     
-    assignContactsToRooms: async (req, res) => {
+    /* assignContactsToRooms: async (req, res) => {
         const { contacts } = req.body
         const userId = req.userId
         const resPayload = {}
@@ -191,7 +188,7 @@ module.exports = {
                 res.json(resPayload)
             })
         })
-    },
+    }, */
 
     deleteContacts: async (req, res) => {
         const removeContacts = req.body
@@ -239,37 +236,50 @@ module.exports = {
         const resPayload = {}
         const { userId } = req
         let phonebook = await Phonebook.findOne({ user: userId })
-        if (!phonebook) {
+        if (phonebook) {
+            // Search for existing users in contacts
+            let contactsPhones = phonebook.contacts.map(c => c.phone)
+            let query = contactsPhones.map(phone => ({ phone }))
+            const existingUsers = await User.find({ $or: query }).select('_id phone')
+
+            if (existingUsers.length > 0) {
+                const existingUsersPhoneNumber = existingUsers.map(u => u.phone.number)
+                phonebook.contacts.forEach(c => {
+                    const cpn = c.phone.number
+                    if (existingUsersPhoneNumber.includes(cpn)) {
+                        c.userAccExist = true
+                        const u = existingUsers.find(u => u.phone.number === cpn)
+                        c.user = u._id
+                    }
+                })
+
+                phonebook.save(async (err, doc) => {
+                    if (err) {
+                        resPayload.msg = 'error'
+                        resPayload.from = 'Mongodb'
+                        resPayload.data = err
+                        return res.json(resPayload)
+                    }
+                    phonebook = doc
+                    // Send response
+                    resPayload.msg = 'ok'
+                    await phonebook.populate('contacts.user')
+                    resPayload.data = await phonebook.populate('contacts.user.avatar')
+                    res.json(resPayload)
+                })
+            } else {
+                // Send response
+                resPayload.msg = 'ok'
+                await phonebook.populate('contacts.user')
+                resPayload.data = await phonebook.populate('contacts.user.avatar')
+                res.json(resPayload)
+            }
+        } else {
             const newPhonebook = new Phonebook({
                 user: userId
             })
-            await newPhonebook.save((err, doc) => {
-                if (err) {
-                    resPayload.msg = 'error'
-                    resPayload.from = 'Mongodb'
-                    resPayload.data = err
-                    return res.json(resPayload)
-                }
-                phonebook = doc
-            })
-        }
 
-        // Check contacts with existing acc
-        let notExistingUserAccPhones = phonebook.contacts.map(contact => {
-            return !contact.userAccExist ? contact.phone : null
-        }).filter(phoneNumber => phoneNumber !== null)
-        let query = notExistingUserAccPhones.map(phone => ({ phone }))
-        const newExistingUsers = await User.find({ $or: query }).select('_id phone')
-        const newExistingUsersPhoneNumber = newExistingUsers.map(user => user.phone.number)
-        if (newExistingUsers.length > 0) {
-            phonebook.contacts.forEach(contact => {
-                if (newExistingUsersPhoneNumber.includes(contact.phone.number)) {
-                    contact.userAccExist = true
-                    const user = newExistingUsers.find(user => user.phone.number === contact.phone.number)
-                    if (user) contact.user = user._id
-                }
-            })
-            await phonebook.save((err, doc) => {
+            newPhonebook.save(async (err, doc) => {
                 if (err) {
                     resPayload.msg = 'error'
                     resPayload.from = 'Mongodb'
@@ -277,14 +287,13 @@ module.exports = {
                     return res.json(resPayload)
                 }
                 phonebook = doc
+                // Send response
+                resPayload.msg = 'ok'
+                await phonebook.populate('contacts.user')
+                resPayload.data = await phonebook.populate('contacts.user.avatar')
+                res.json(resPayload)
             })
         }
-        
-        // Send response
-        resPayload.msg = 'ok'
-        await phonebook.populate('contacts.user')
-        resPayload.data = await phonebook.populate('contacts.user.avatar')
-        res.json(resPayload)
     },
 
     updateUser: async (req, res) => {
