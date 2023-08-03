@@ -150,7 +150,9 @@ module.exports = {
         const resPayload = {}
         const { userId } = req
         let phonebook = await Phonebook.findOne({ user: userId })
+        console.log({ phonebook });
         if (phonebook) {
+            console.log('phonebook exist');
             // Search for existing users in contacts
             let contactsPhones = phonebook.contacts.map(c => c.phone)
             let query = contactsPhones.map(phone => ({ phone }))
@@ -189,6 +191,7 @@ module.exports = {
                 res.json(resPayload)
             }
         } else {
+            console.log('create phonebook');
             const newPhonebook = new Phonebook({
                 user: userId
             })
