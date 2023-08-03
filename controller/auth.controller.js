@@ -15,6 +15,7 @@ module.exports = {
     phoneAuth: async (req, res) => {
         let reqBody = req.body
         let resPayload = {}
+        console.log({ reqBody });
 
         // clear any prev otp
         await Otp.deleteMany({ ...reqBody })
@@ -28,11 +29,12 @@ module.exports = {
             passcode,
             ...reqBody
         })
-        newOtp.save(async (err, doc) => {
+        newOtp.save(async (err) => {
             if (err) {
                 resPayload.msg = 'error'
                 resPayload.from = 'Mongodb'
                 resPayload.data = err
+                console.log({ err });
                 return res.json(resPayload)
             }
 

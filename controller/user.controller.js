@@ -32,20 +32,21 @@ module.exports = {
         let roomsQ = contactsPhoneNumber.map(phoneNumber => {
             const chatroom = {
                 roomType: 'pair',
-                usersPhoneNumber: [user.phone.number, phoneNumber]
+                usersPhoneNumber: { $all: [user.phone.number, phoneNumber] }
             }
             return chatroom
         })
 
         // Find existing rooms
         const existingRooms = await ChatRoom.find({ $or: roomsQ })
+        roomsQ = roomsQ.map(q => {
+            q.usersPhoneNumber = q.usersPhoneNumber.$all
+            return q
+        })
         roomsQ = roomsQ.filter(q => {
             let bool = true
-            const room = existingRooms
-                            .find(r => compareArrays(r.usersPhoneNumber, q.usersPhoneNumber))
+            const room = existingRooms.find(r => compareArrays(r.usersPhoneNumber, q.usersPhoneNumber))
             if (room) bool = false
-            console.log({ room, bool })
-
             return bool
         })
         
@@ -59,14 +60,11 @@ module.exports = {
 
             let rooms = docs
             if (rooms.length === 0) rooms = existingRooms
-            console.log({ docs, rooms });
 
-            console.log({ contactsPhones });
             const existingUsers = await User.find({ $or: contactsPhones })
                                     .select('phone _id')
 
             // Tag contacts with existing users
-            console.log({ existingUsers });
             existingUsers.forEach((u) => {
                 const i = contactsPhones
                             .findIndex((c) => c.phone.number === u.phone.number)
@@ -74,13 +72,11 @@ module.exports = {
                     contactsPhones[i].userAccExist = true
                     contactsPhones[i].user = u._id
                 }
-                console.log({ i });
             })
 
             // Add room id to new contacts
             const contacts = contactsPhones.map(c => {
                 let room = rooms.find(room => {
-                    console.log({ room });
                     return room.usersPhoneNumber.includes(c.phone.number)
                 })
                 if (room !== undefined) {
@@ -108,88 +104,6 @@ module.exports = {
         })
     },
     
-    /* assignContactsToRooms: async (req, res) => {
-        const { contacts } = req.body
-        const userId = req.userId
-        const resPayload = {}
-
-        // Fetch user
-        const user = await User.findById(userId).select('_id phone')
-
-        const contactsPhoneNumber = contacts.map(c => (c.phone.number))
-        // Create chatrooms
-        let insertRoomsInput = contactsPhoneNumber.map(phoneNumber => {
-            const chatroom = {
-                roomType: 'pair',
-                usersPhoneNumber: [user.phone.number, phoneNumber]
-            }
-            return chatroom
-        })
-        // Find existing pair chatrooms
-        const findRoomsInput = insertRoomsInput.map(doc => {
-            const docCopy = structuredClone(doc)
-            docCopy.usersPhoneNumber = { $all: doc.usersPhoneNumber }
-            return docCopy
-        })
-        const existingRooms = await ChatRoom.find({ $or: findRoomsInput })
-        if (existingRooms.length > 0) {
-            let roomI, op
-            insertRoomsInput = insertRoomsInput.filter(doc => {
-                roomI = existingRooms.findIndex(room => {
-                    return room.usersPhoneNumber.includes(doc.usersPhoneNumber[0]) && room.usersPhoneNumber.includes(doc.usersPhoneNumber[1])
-                })
-                roomI === -1 ? op = true : op = false
-                return op
-            })
-        }
-
-        ChatRoom.insertMany(insertRoomsInput, async (err, docs) => {
-            if (err) {
-                resPayload.msg = 'error'
-                resPayload.from = 'Mongodb'
-                resPayload.data = err
-                return res.json(resPayload)
-            }
-            // console.log({insertRoomsInput, docs});
-            const newRooms = docs
-            // console.log({existingRooms, newRooms});
-            const rooms = [...existingRooms, ...newRooms]
-            // resPayload.msg = 'success'
-            // res.json(resPayload)
-            // Add room id to new contacts
-            let assignedContacts = []
-            let phonebook = await Phonebook.findOne({ user: user._id })
-            let room
-            phonebook.contacts.forEach((phonebookContact) => {
-                const phonebookContactPhoneNumber = phonebookContact.phone.number
-                if (contactsPhoneNumber.includes(phonebookContactPhoneNumber)) {
-                    room = rooms.find(r => { 
-                        const roomUsersPhoneNumber = r.usersPhoneNumber
-                        return roomUsersPhoneNumber.includes(phonebookContactPhoneNumber)
-                    })
-                    // console.log({room});
-                    if (room !== undefined) {
-                        phonebookContact.roomId = room.id
-                        assignedContacts.push(phonebookContact)
-                    }
-                }
-            })
-
-            phonebook.save(async (err) => {
-                if (err) {
-                    resPayload.msg = 'error'
-                    resPayload.from = 'Mongodb'
-                    resPayload.data = err
-                    return res.json(resPayload)
-                }
-    
-                resPayload.msg = 'success'
-                resPayload.data = assignedContacts
-                res.json(resPayload)
-            })
-        })
-    }, */
-
     deleteContacts: async (req, res) => {
         const removeContacts = req.body
         const resPayload = {}
@@ -347,17 +261,4 @@ module.exports = {
             })
         }
     }
-    
-    /* userFetchUsers: async (req, res) => {
-        const resPayload = {}
-        const usersId = req.query.ids
-                            .split(',')
-                            .map(id => ({_id: id}))
-                            
-        const users = await User.find({ $or: usersId }).populate('avatar')
-
-        resPayload.msg = 'ok'
-        resPayload.data = users
-        res.json(resPayload)
-    } */
 }
