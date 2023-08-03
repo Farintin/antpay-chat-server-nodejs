@@ -15,7 +15,7 @@ module.exports = {
     phoneAuth: async (req, res) => {
         let reqBody = req.body
         let resPayload = {}
-        console.log({ reqBody });
+        // console.log({ reqBody });
 
         // clear any prev otp
         await Otp.deleteMany({ ...reqBody })
