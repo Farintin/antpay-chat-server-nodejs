@@ -155,8 +155,11 @@ module.exports = {
             console.log('phonebook exist');
             // Search for existing users in contacts
             let contactsPhones = phonebook.contacts.map(c => c.phone)
-            let query = contactsPhones.map(phone => ({ phone }))
-            const existingUsers = await User.find({ $or: query }).select('_id phone')
+            let existingUsers = []
+            if (contactsPhones.length > 0) {
+                const query = contactsPhones.map(phone => ({ phone }))
+                existingUsers = await User.find({ $or: query }).select('_id phone')
+            }
 
             if (existingUsers.length > 0) {
                 const existingUsersPhoneNumber = existingUsers.map(u => u.phone.number)
