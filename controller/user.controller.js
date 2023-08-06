@@ -10,10 +10,22 @@ const cld = require('../cloudinary')
 
 function compareArrays(arr1, arr2){
     if(arr1.length !== arr2.length) return false
-
     if(arr1.sort().toString() !== arr2.sort().toString()) return false
-  
     return true
+}
+const findExistingUsers = async (query) => {
+    if (query === null) {
+        return []
+    } else {
+        const users = await User.find(query).select('_id phone')
+        return users
+    }
+}
+const getPhonebookResHandler = async ({ resPayload, phonebook, res }) => {
+    resPayload.msg = 'ok'
+    await phonebook.populate('contacts.user')
+    resPayload.data = await phonebook.populate('contacts.user.avatar')
+    return res.json(resPayload)
 }
 
 
@@ -151,15 +163,34 @@ module.exports = {
         const { userId } = req
         let phonebook = await Phonebook.findOne({ user: userId })
         // console.log({ phonebook });
-        if (phonebook) {
+        if (!phonebook) {
+            // console.log('create phonebook');
+            const newPhonebook = new Phonebook({
+                user: userId
+            })
+            newPhonebook.save(async (err, doc) => {
+                if (err) {
+                    resPayload.msg = 'error'
+                    resPayload.from = 'Mongodb'
+                    resPayload.data = err
+                    return res.json(resPayload)
+                }
+                phonebook = doc
+                // Send response
+                return getPhonebookResHandler({ resPayload, phonebook, res})
+            })
+        } else {
             // console.log('phonebook exist');
             // Search for existing users in contacts
             let contactsPhones = phonebook.contacts.map(c => c.phone)
-            let existingUsers = []
+            let query = null
             if (contactsPhones.length > 0) {
-                const query = contactsPhones.map(phone => ({ phone }))
-                existingUsers = await User.find({ $or: query }).select('_id phone')
+                query = { 
+                    $or: contactsPhones.map(phone => ({ "phone.number": phone.number })) 
+                } 
             }
+            let existingUsers = await findExistingUsers(query)
+            // console.log({ query, existingUsers });
 
             if (existingUsers.length > 0) {
                 const existingUsersPhoneNumber = existingUsers.map(u => u.phone.number)
@@ -179,40 +210,15 @@ module.exports = {
                         resPayload.data = err
                         return res.json(resPayload)
                     }
+                    
                     phonebook = doc
                     // Send response
-                    resPayload.msg = 'ok'
-                    await phonebook.populate('contacts.user')
-                    resPayload.data = await phonebook.populate('contacts.user.avatar')
-                    res.json(resPayload)
+                    return getPhonebookResHandler({ resPayload, phonebook, res})
                 })
             } else {
                 // Send response
-                resPayload.msg = 'ok'
-                await phonebook.populate('contacts.user')
-                resPayload.data = await phonebook.populate('contacts.user.avatar')
-                res.json(resPayload)
+                return getPhonebookResHandler({ resPayload, phonebook, res})
             }
-        } else {
-            // console.log('create phonebook');
-            const newPhonebook = new Phonebook({
-                user: userId
-            })
-
-            newPhonebook.save(async (err, doc) => {
-                if (err) {
-                    resPayload.msg = 'error'
-                    resPayload.from = 'Mongodb'
-                    resPayload.data = err
-                    return res.json(resPayload)
-                }
-                phonebook = doc
-                // Send response
-                resPayload.msg = 'ok'
-                await phonebook.populate('contacts.user')
-                resPayload.data = await phonebook.populate('contacts.user.avatar')
-                res.json(resPayload)
-            })
         }
     },
 

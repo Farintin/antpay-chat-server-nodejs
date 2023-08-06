@@ -4,7 +4,8 @@ const { chatRoomHandler } = require('../../../handler/io')
 
 
 
-let socketsId = new Set()
+
+
 
 const pingReciept1 = ({ socket, message }) => {
     socket.emit("to-client-reciept-ping1", message)
@@ -30,14 +31,16 @@ const onTyping = (data, socket) => {
 
 
 
-const onConnectedSocket = (socket, io) => {
-  const socketId = socket.id
-  socketsId.add(socketId)
-  console.log('Socket connected', socketId)
+
+
+const onConnectedSocket = async (socket, io) => {
+  const { user } = socket.handshake.auth
+  socket.data = { user }
+  console.log('Socket connected', { id: socket.id, user })
 
   indicateRoomGuestOnline({ socket, online: true, handshake: false })
 
-  socket.on('disconnect', () => {onDisconnectSocket(socket)})
+  socket.on('disconnect', () => {onDisconnectSocket(socket, io)})
   socket.on('disconnecting', () => {onDisconnectingSocket(socket)})
   socket.on('join-rooms', (roomsId) => onJoinRooms(socket, roomsId))
   socket.on('send-message', (message) => onSendMessage(message, socket, io))
@@ -48,8 +51,8 @@ const onConnectedSocket = (socket, io) => {
 }
 
 const onDisconnectSocket = (socket) => {
-    console.log('Socket disconnected', socket.id)
-    socketsId.delete(socket.id)
+    const { data, id } = socket
+    console.log('Socket disconnected', { id, data })
 }
 
 const onDisconnectingSocket = (socket) => {
@@ -67,12 +70,33 @@ const onJoinRooms = (socket, roomsId) => {
 const onSendMessage = async (message, socket, io) => {
     const room = await chatRoomHandler(message.roomId)
     if (room) {
+        let isFirstMsg
+        if (room.messages.length === 0) {
+            isFirstMsg = true
+        }
+
         message.reciept = 1
         room.messages.push(message)
-        room.save((err, room) => {
-            message = room.messages.find(msg => (msg.sid === message.sid))
-            socket.to(room.id).emit('recieve-message', message)
-            pingReciept1({ socket, message, io })
+        room.save(async (err, room) => {
+            if (room) {
+                message = room.messages.find(msg => (msg.sid === message.sid))
+    
+                if (isFirstMsg) {
+                    let sockets = await io.in(room._id).fetchSockets()
+                    let recieptSocket = sockets.find(s => s.data.user.phone.number === message.reader)
+                    if (!recieptSocket) {
+                        sockets = await io.fetchSockets()
+                        recieptSocket = sockets.find(s => s.data.user.phone.number === message.reader)
+                        if (recieptSocket) {
+                            io.to(recieptSocket.id).emit('newConversation', { room })
+                            pingReciept1({ socket, message, io })
+                        }
+                    }
+                } else {
+                    socket.to(room.id).emit('recieve-message', message)
+                    pingReciept1({ socket, message, io })
+                }
+            }
         })
     }
 }
@@ -116,7 +140,9 @@ const onClientRecieptPing3 = async (data, socket) => {
         })
     }
 }
-  
+
+
+
   
 
 module.exports = {
