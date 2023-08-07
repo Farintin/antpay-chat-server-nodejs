@@ -34,7 +34,6 @@ module.exports = {
                 resPayload.msg = 'error'
                 resPayload.from = 'Mongodb'
                 resPayload.data = err
-                console.log({ err });
                 return res.json(resPayload)
             }
 
@@ -82,7 +81,6 @@ module.exports = {
                     return res.json(resPayload)
                 }
                 // Generate access token
-                console.log('userDoc:', doc)
                 const accessToken = await generateAccessToken(doc.id)
                 resPayload.data.token = {
                     accessToken

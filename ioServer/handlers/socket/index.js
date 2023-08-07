@@ -36,7 +36,7 @@ const onTyping = (data, socket) => {
 const onConnectedSocket = async (socket, io) => {
   const { user } = socket.handshake.auth
   socket.data = { user }
-  console.log('Socket connected', { id: socket.id, user })
+  // console.log('Socket connected', { id: socket.id, user })
 
   indicateRoomGuestOnline({ socket, online: true, handshake: false })
 
@@ -51,8 +51,8 @@ const onConnectedSocket = async (socket, io) => {
 }
 
 const onDisconnectSocket = (socket) => {
-    const { data, id } = socket
-    console.log('Socket disconnected', { id, data })
+    // const { data, id } = socket
+    // console.log('Socket disconnected', { id, data })
 }
 
 const onDisconnectingSocket = (socket) => {
@@ -82,13 +82,15 @@ const onSendMessage = async (message, socket, io) => {
                 message = room.messages.find(msg => (msg.sid === message.sid))
     
                 if (isFirstMsg) {
-                    let sockets = await io.in(room._id).fetchSockets()
-                    let recieptSocket = sockets.find(s => s.data.user.phone.number === message.reader)
-                    if (!recieptSocket) {
-                        sockets = await io.fetchSockets()
-                        recieptSocket = sockets.find(s => s.data.user.phone.number === message.reader)
-                        if (recieptSocket) {
+                    let sockets = await io.fetchSockets()
+                    recieptSocket = Array.from(sockets).find(s => s.data.user.phone.number === message.reader)
+                    if (recieptSocket) {
+                        const rooms = Array.from(recieptSocket.rooms)
+                        if (!rooms.includes(room.id)) {
                             io.to(recieptSocket.id).emit('newConversation', { room })
+                            pingReciept1({ socket, message, io })
+                        } else {
+                            socket.to(room.id).emit('recieve-message', message)
                             pingReciept1({ socket, message, io })
                         }
                     }
@@ -125,7 +127,6 @@ const onClientRecieptPing3 = async (data, socket) => {
     const { roomId, messageIds } = data
     let room = await chatRoomHandler(roomId)
     if (room) {
-        console.log(roomId);
         messageIds.forEach(id => {
             i = room.messages.findIndex(msg => msg.id === id)
             if (i !== -1) {
