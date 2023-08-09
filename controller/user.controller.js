@@ -260,13 +260,13 @@ module.exports = {
                 })
             })
         } else {
-            User.findByIdAndUpdate('req.userId', { $set: data }, { new: true }, async (err, doc) => {
-                /* if (err) {
+            User.findByIdAndUpdate(req.userId, { $set: data }, { new: true }, async (err, doc) => {
+                if (err) {
                     resPayload.msg = 'error'
                     resPayload.from = 'Mongodb'
                     resPayload.data = err
                     return res.json(resPayload)
-                } */
+                }
         
                 resPayload.data = await doc.populate('avatar')
                 resPayload.msg = 'success'
