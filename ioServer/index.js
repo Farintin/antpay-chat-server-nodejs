@@ -6,7 +6,7 @@ const { onConnectedSocket } = require('./handlers/io')
 module.exports = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: "http://web.localhost:3000",
+      origin: "https://web.antpay.cool",
       methods: ["GET","POST"]
     }
   })
