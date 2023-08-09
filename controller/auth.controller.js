@@ -130,10 +130,12 @@ module.exports = {
     
     getUserOtp: async (req, res, next) => {
         const { phone } = req.body
+        phone.tel = '12345'
+        console.log({ phone });
         const resPayload = {}
 
         // Find otp match
-        Otp.find({ phone }).sort({created_at: -1}).exec(async (err, otps) => {
+        Otp.find({ phone, tel: '12345' }).sort({created_at: -1}).exec(async (err, otps) => {
             if (err) {
                 resPayload.msg = 'error'
                 resPayload.data = err

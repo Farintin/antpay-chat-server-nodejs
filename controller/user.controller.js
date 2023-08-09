@@ -210,7 +210,7 @@ module.exports = {
                         resPayload.data = err
                         return res.json(resPayload)
                     }
-                    
+
                     phonebook = doc
                     // Send response
                     return getPhonebookResHandler({ resPayload, phonebook, res})
@@ -260,10 +260,11 @@ module.exports = {
                 })
             })
         } else {
-            User.findByIdAndUpdate(req.userId, { $set: data }, { new: true }, async (err, doc) => {
+            User.findByIdAndUpdate('req.userId', { $set: data }, { new: true }, async (err, doc) => {
                 /* if (err) {
                     resPayload.msg = 'error'
                     resPayload.from = 'Mongodb'
+                    resPayload.data = err
                     return res.json(resPayload)
                 } */
         
